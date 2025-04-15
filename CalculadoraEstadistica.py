@@ -1,127 +1,155 @@
-import numpy as np
 import tkinter as tk
 from tkinter import messagebox
-from tkinter import ttk
-from scipy import stats
+import numpy as np
+import scipy.stats as stats
+import matplotlib.pyplot as plt
 
-# Variables globales
-datos_global = []  # Guardamos los datos globalmente
+# Variable global para almacenar los datos ingresados
+datos_global = []
 
-# Funciones estadísticas
-def calcular_estadisticas(datos):
+# -------------------- FUNCIONES DE CÁLCULO --------------------
+
+def calcular_tendencia_central(datos):
     media = np.mean(datos)
     mediana = np.median(datos)
-    moda_res = stats.mode(datos)
-    moda = moda_res.mode[0] if moda_res.count[0] > 1 else "No tiene moda"
-    varianza = np.var(datos)
-    desviacion = np.std(datos)
+    moda_result = stats.mode(datos, keepdims=True)
+    moda = moda_result.mode[0] if moda_result.count[0] > 1 else "No tiene moda"
+    return {"Media": media, "Mediana": mediana, "Moda": moda}
+
+def calcular_dispersion(datos):
+    varianza = np.var(datos, ddof=1)
+    desviacion = np.std(datos, ddof=1)
+    return {"Varianza": varianza, "Desviación Estándar": desviacion}
+
+def calcular_forma_posicion(datos):
     asimetria = stats.skew(datos)
-    curtosis = stats.kurtosis(datos, fisher=False)
-    percentiles = np.percentile(datos, [25, 50, 75])
-    cuartiles = (percentiles[0], percentiles[2])
-    tamano_muestra = len(datos)
-    
-    return {
-        "Media": media,
-        "Mediana": mediana,
-        "Moda": moda,
-        "Varianza": varianza,
-        "Desviación Estándar": desviacion,
-        "Asimetría": asimetria,
-        "Curtosis": curtosis,
-        "Percentiles": percentiles,
-        "Cuartiles": cuartiles,
-        "Tamaño de la Muestra": tamano_muestra
+    curtosis = stats.kurtosis(datos)
+    percentiles = {
+        "P25": np.percentile(datos, 25),
+        "P50": np.percentile(datos, 50),
+        "P75": np.percentile(datos, 75)
     }
+    cuartiles = {
+        "Q1": np.quantile(datos, 0.25),
+        "Q2": np.quantile(datos, 0.50),
+        "Q3": np.quantile(datos, 0.75)
+    }
+    return {"Asimetría": asimetria, "Curtosis": curtosis, **percentiles, **cuartiles}
 
-# Función para mostrar los resultados en una nueva ventana
-def mostrar_resultados(resultado):
-    ventana_resultados = tk.Toplevel(ventana)
-    ventana_resultados.title("Resultados Estadísticos")
-    ventana_resultados.geometry("400x300")
-    tk.Label(ventana_resultados, text=resultado, font=("Arial", 12)).pack(pady=20)
+def calcular_tamano_muestra(datos):
+    z = 1.96  # 95% de confianza
+    e = 0.05  # error esperado
+    desviacion = np.std(datos, ddof=1)
+    n = ((z * desviacion) / e) ** 2
+    return {"Tamaño de Muestra Estimado": int(round(n))}
 
-# Función para procesar los datos de entrada
-def procesar(entrada_datos):
-    try:
-        datos = [float(x) for x in entrada_datos.get().split()]
-        global datos_global
-        datos_global = datos
-        messagebox.showinfo("Información", "Datos procesados correctamente.")
-    except ValueError:
-        messagebox.showerror("Error", "Por favor, introduce solo números separados por espacios.")
+# -------------------- INTERFAZ --------------------
 
-# Función para mostrar los resultados según la opción seleccionada
-def mostrar_medida(seleccion):
+def mostrar_resultado(nombre_medida, resultados):
+    ventana_resultado = tk.Toplevel()
+    ventana_resultado.title(f"Resultados - {nombre_medida}")
+    
+    tk.Label(ventana_resultado, text=f"Resultados de {nombre_medida}", font=("Arial", 14, "bold")).pack(pady=10)
+    
+    for clave, valor in resultados.items():
+        tk.Label(ventana_resultado, text=f"{clave}: {valor}", font=("Arial", 12)).pack()
+
+    # Botón para graficar
+    tk.Button(ventana_resultado, text="Graficar Resultados", command=lambda: graficar_resultados(nombre_medida, resultados)).pack(pady=10)
+
+def graficar_resultados(nombre_medida, resultados):
+    claves = list(resultados.keys())
+    valores = list(resultados.values())
+
+    # Eliminar valores que no sean numéricos (como "No tiene moda")
+    claves_filtradas = []
+    valores_filtrados = []
+    for k, v in zip(claves, valores):
+        if isinstance(v, (int, float, np.float64)):
+            claves_filtradas.append(k)
+            valores_filtrados.append(v)
+
+    if not valores_filtrados:
+        messagebox.showinfo("Sin valores numéricos", "No hay datos numéricos para graficar.")
+        return
+
+    plt.figure(figsize=(8, 5))
+    plt.bar(claves_filtradas, valores_filtrados, color="skyblue")
+    plt.title(f"Gráfico - {nombre_medida}")
+    plt.ylabel("Valor")
+    plt.tight_layout()
+    plt.show()
+
+def seleccionar_medida(nombre):
     if not datos_global:
-        messagebox.showwarning("Error", "Primero introduce los datos.")
+        messagebox.showwarning("Error", "Primero debes ingresar datos.")
         return
     
-    medidas = calcular_estadisticas(np.array(datos_global))
+    datos = np.array(datos_global)
     
-    if seleccion not in medidas:
-        messagebox.showerror("Error", "Opción no válida.")
-        return
-
-    resultado = f"{seleccion}: {medidas[seleccion]}"
-    mostrar_resultados(resultado)
-
-# Función para la ventana de estadísticas
-def ventana_estadisticas():
-    ventana_secundaria = tk.Toplevel(ventana)
-    ventana_secundaria.title("Calcular Estadísticas")
-    ventana_secundaria.geometry("600x400")
-
-    tk.Label(ventana_secundaria, text="Introduce los datos (separados por espacios):").pack()
-    entrada_datos = tk.Entry(ventana_secundaria, width=70)
-    entrada_datos.pack(pady=5)
-
-    tk.Button(ventana_secundaria, text="Procesar Datos", command=lambda: procesar(entrada_datos)).pack(pady=10)
-
-    tk.Label(ventana_secundaria, text="Selecciona una medida para mostrar:").pack(pady=5)
-
-    # Botones para las medidas
-    botones = [
-        ("Media", "Media"),
-        ("Mediana", "Mediana"),
-        ("Moda", "Moda"),
-        ("Varianza", "Varianza"),
-        ("Desviación Estándar", "Desviación Estándar"),
-        ("Asimetría", "Asimetría"),
-        ("Curtosis", "Curtosis"),
-        ("Percentiles", "Percentiles"),
-        ("Cuartiles", "Cuartiles"),
-        ("Tamaño de la Muestra", "Tamaño de la Muestra")
-    ]
+    if nombre == "Tendencia Central":
+        resultado = calcular_tendencia_central(datos)
+    elif nombre == "Dispersión":
+        resultado = calcular_dispersion(datos)
+    elif nombre == "Forma y Posición":
+        resultado = calcular_forma_posicion(datos)
+    elif nombre == "Tamaño de Muestra":
+        resultado = calcular_tamano_muestra(datos)
+    else:
+        resultado = {}
     
-    for texto, medida in botones:
-        tk.Button(ventana_secundaria, text=texto, width=30, command=lambda medida=medida: mostrar_medida(medida)).pack(pady=5)
+    mostrar_resultado(nombre, resultado)
 
-# Función para la ventana de gráficos
-def ventana_graficos():
-    ventana_secundaria = tk.Toplevel(ventana)
-    ventana_secundaria.title("Seleccionar Gráfico")
-    ventana_secundaria.geometry("400x300")
+def procesar_datos(entrada, ventana):
+    global datos_global
+    try:
+        datos = [float(x) for x in entrada.get().split()]
+        if len(datos) < 2:
+            raise ValueError("Se requieren al menos 2 datos.")
+        datos_global = datos
+        ventana.destroy()
+        mostrar_menu_medidas()
+    except ValueError as e:
+        messagebox.showerror("Error", f"Datos inválidos: {e}")
 
-    tk.Label(ventana_secundaria, text="Selecciona un gráfico para mostrar:").pack(pady=5)
-    opciones_grafico = ["Histograma", "Boxplot", "Barras", "Líneas", "KDE", "Dispersión"]
-    combo = ttk.Combobox(ventana_secundaria, values=opciones_grafico)
-    combo.pack()
+# -------------------- MENÚS --------------------
 
-    tk.Button(ventana_secundaria, text="Mostrar Gráfico", command=lambda: mostrar_grafico(combo.get())).pack(pady=10)
+def mostrar_ventana_datos():
+    ventana_datos = tk.Toplevel()
+    ventana_datos.title("Ingresar Datos")
 
-# Función para crear el menú principal
-def menu_principal():
-    ventana.geometry("400x300")
-    ventana.title("Menú Principal")
+    tk.Label(ventana_datos, text="Ingrese los datos separados por espacios:", font=("Arial", 12)).pack(pady=10)
+    entrada = tk.Entry(ventana_datos, width=40)
+    entrada.pack(pady=5)
 
-    tk.Label(ventana, text="Bienvenido a la Calculadora Estadística", font=("Arial", 16)).pack(pady=20)
+    tk.Button(ventana_datos, text="Continuar", command=lambda: procesar_datos(entrada, ventana_datos)).pack(pady=10)
 
-    tk.Button(ventana, text="Calcular Estadísticas", width=30, command=ventana_estadisticas).pack(pady=10)
-    tk.Button(ventana, text="Mostrar Gráficos", width=30, command=ventana_graficos).pack(pady=10)
+def mostrar_menu_medidas():
+    ventana_menu = tk.Toplevel()
+    ventana_menu.title("Seleccionar Medida Estadística")
 
-# Configuración de ventana principal
-ventana = tk.Tk()
-menu_principal()
+    tk.Label(ventana_menu, text="Selecciona el tipo de medida estadística", font=("Arial", 14, "bold")).pack(pady=15)
 
-ventana.mainloop()
+    opciones = ["Tendencia Central", "Dispersión", "Forma y Posición", "Tamaño de Muestra"]
+    for op in opciones:
+        tk.Button(ventana_menu, text=op, width=30, command=lambda op=op: seleccionar_medida(op)).pack(pady=5)
+
+# -------------------- VENTANA PRINCIPAL --------------------
+
+def main():
+    raiz = tk.Tk()
+    raiz.title("Calculadora Estadística")
+    raiz.geometry("400x300")
+
+    tk.Label(raiz, text="Calculadora Estadística", font=("Arial", 16, "bold")).pack(pady=20)
+
+    tk.Button(raiz, text="Ingresar Datos", width=25, command=mostrar_ventana_datos).pack(pady=10)
+
+    tk.Button(raiz, text="Salir", width=25, command=raiz.destroy).pack(pady=10)
+
+    raiz.mainloop()
+
+# -------------------- EJECUTAR --------------------
+
+if __name__ == "__main__":
+    main()
