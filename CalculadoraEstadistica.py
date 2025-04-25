@@ -15,37 +15,30 @@ def calcular_tendencia_central(datos):
         'Moda': moda[0] if len(moda) > 0 else 'No definida'
     }
 
-
 def calcular_dispersion(datos):
     varianza = np.var(datos, ddof=1)
     desviacion = np.std(datos, ddof=1)
-    resultados = {
+    return {
         'Varianza': varianza,
         'Desviación Estándar': desviacion
     }
-    return resultados
 
 def calcular_forma_posicion(datos):
     asimetria = stats.skew(datos)
     curtosis = stats.kurtosis(datos)
-    percentil_25 = np.percentile(datos, 25)
-    percentil_50 = np.percentile(datos, 50)
-    percentil_75 = np.percentile(datos, 75)
-    resultados = {
+    return {
         'Asimetría': asimetria,
         'Curtosis': curtosis,
-        'Percentil 25': percentil_25,
-        'Percentil 50 (Mediana)': percentil_50,
-        'Percentil 75': percentil_75
+        'Percentil 25': np.percentile(datos, 25),
+        'Percentil 50 (Mediana)': np.percentile(datos, 50),
+        'Percentil 75': np.percentile(datos, 75)
     }
-    return resultados
 
 def calcular_tamano_muestra(N, Z=1.96, p=0.5, e=0.05):
     n = (Z**2 * p * (1 - p)) / (e**2)
     n_ajustada = (n * N) / (n + N - 1)
     return round(n_ajustada)
 
-# Función para graficar los resultados según la medida seleccionada
 def graficar_resultados(tipo, resultados):
     plt.figure(figsize=(7, 4))
     if tipo == 'Tendencia Central':
@@ -64,7 +57,6 @@ def graficar_resultados(tipo, resultados):
     plt.tight_layout()
     plt.show()
 
-# Función principal que se llama al presionar calcular
 def procesar():
     entrada = datos_entry.get()
     opcion = tipo_combo.get()
@@ -112,31 +104,43 @@ def mostrar_resultados(opcion, resultados):
 # Interfaz gráfica
 root = tk.Tk()
 root.title("Calculadora Estadística")
+root.configure(bg='#f0f4f8')
 
-frame = ttk.Frame(root, padding="10")
+# Estilo
+style = ttk.Style()
+style.theme_use("clam")
+style.configure("TFrame", background="#f0f4f8")
+style.configure("TLabel", background="#f0f4f8", font=('Segoe UI', 10))
+style.configure("TButton", background="#1976D2", foreground="white", font=('Segoe UI', 10, 'bold'))
+style.map("TButton", background=[("active", "#0D47A1")])
+style.configure("TCombobox", fieldbackground="white", background="white")
+style.configure("TCheckbutton", background="#f0f4f8")
+
+frame = ttk.Frame(root, padding="12")
 frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-ttk.Label(frame, text="Seleccione el tipo de medida:").grid(column=0, row=0, sticky=tk.W)
+ttk.Label(frame, text="Seleccione el tipo de medida:").grid(column=0, row=0, sticky=tk.W, pady=3)
 tipo_combo = ttk.Combobox(frame, values=["Tendencia Central", "Dispersión", "Forma y Posición", "Tamaño de Muestra"], state="readonly")
-tipo_combo.grid(column=1, row=0, sticky=tk.W)
+tipo_combo.grid(column=1, row=0, sticky=tk.W, pady=3)
 tipo_combo.set("Tendencia Central")
 
-ttk.Label(frame, text="Ingrese los datos (separados por coma):").grid(column=0, row=1, sticky=tk.W)
+ttk.Label(frame, text="Ingrese los datos (separados por coma):").grid(column=0, row=1, sticky=tk.W, pady=3)
 datos_entry = ttk.Entry(frame, width=40)
-datos_entry.grid(column=1, row=1, sticky=tk.W)
+datos_entry.grid(column=1, row=1, sticky=tk.W, pady=3)
 
-ttk.Label(frame, text="Tamaño de población (solo para tamaño de muestra):").grid(column=0, row=2, sticky=tk.W)
+ttk.Label(frame, text="Tamaño de población (solo para tamaño de muestra):").grid(column=0, row=2, sticky=tk.W, pady=3)
 tamano_entry = ttk.Entry(frame, width=15)
-tamano_entry.grid(column=1, row=2, sticky=tk.W)
+tamano_entry.grid(column=1, row=2, sticky=tk.W, pady=3)
 
 graficar_var = tk.BooleanVar()
 graficar_check = ttk.Checkbutton(frame, text="Mostrar gráfica", variable=graficar_var)
-graficar_check.grid(column=1, row=3, sticky=tk.W)
+graficar_check.grid(column=1, row=3, sticky=tk.W, pady=3)
 
 calcular_btn = ttk.Button(frame, text="Calcular", command=procesar)
 calcular_btn.grid(column=1, row=4, pady=10, sticky=tk.E)
 
-resultado_text = tk.Text(frame, width=50, height=10, state=tk.DISABLED)
-resultado_text.grid(column=0, row=5, columnspan=2)
+resultado_text = tk.Text(frame, width=55, height=10, bg="#e8f0fe", fg="#000000", font=("Consolas", 10))
+resultado_text.grid(column=0, row=5, columnspan=2, pady=5)
+resultado_text.config(state=tk.DISABLED)
 
 root.mainloop()
