@@ -1,4 +1,4 @@
-# Importar librerías necesarias
+import os
 from cryptography.fernet import Fernet
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
@@ -11,7 +11,7 @@ class Documento:
     def __init__(self, nombre, contenido):
         self.nombre = nombre
         self.contenido = contenido
-        self.tipo = None  # Tipo del documento: se llenará con la clasificación
+        self.tipo = None
 
     def set_tipo(self, tipo):
         self.tipo = tipo
@@ -34,23 +34,24 @@ class GestorDocumentos:
         contenido_descifrado = self.cipher_suite.decrypt(documento.contenido).decode('utf-8')
         return contenido_descifrado
 
-# =========================
-# Parte 2: Modelo de IA para Clasificación
-# =========================
-
 class ClasificadorDocumentos:
     def __init__(self):
-        # Datos de entrenamiento simples
         self.documentos_entrenamiento = [
-            "Contrato de prestación de servicios",
-            "Informe de resultados anuales",
-            "Reporte de incidentes técnicos"
-        ]
+    "Contrato de prestación de servicios entre la empresa XYZ y el proveedor ABC.",
+    "Informe de resultados de ventas del año 2024.",
+    "Reporte de incidentes técnicos del 15 de marzo de 2025.",
+    "Contrato de arrendamiento entre Juan Pérez y la empresa XYZ.",
+    "Informe anual de resultados de la empresa ABC.",
+    "Reporte de fallas en el sistema de base de datos."
+    ]
         self.etiquetas_entrenamiento = [
-            "Contrato",
-            "Informe",
-            "Reporte"
-        ]
+    "Contrato",
+    "Informe",
+    "Reporte",
+    "Contrato",
+    "Informe",
+    "Reporte"
+    ]
         self.vectorizador = TfidfVectorizer(stop_words='english')
         X = self.vectorizador.fit_transform(self.documentos_entrenamiento)
         
@@ -63,55 +64,63 @@ class ClasificadorDocumentos:
         return prediccion
 
 # =========================
-# Parte 3: Función para cargar un documento desde archivo
+# Parte 2: Funciones para cargar varios documentos
 # =========================
 
-def cargar_documento_desde_archivo(ruta_archivo):
-    """Lee el contenido de un archivo de texto y devuelve su contenido"""
-    with open(ruta_archivo, 'r', encoding='utf-8') as archivo:
-        contenido = archivo.read()
-    return contenido
+def cargar_documentos_desde_carpeta(ruta_carpeta):
+    """Lee todos los archivos .txt de una carpeta y devuelve una lista de (nombre, contenido)"""
+    documentos = []
+    for nombre_archivo in os.listdir(ruta_carpeta):
+        if nombre_archivo.endswith(".txt"):
+            ruta_completa = os.path.join(ruta_carpeta, nombre_archivo)
+            with open(ruta_completa, 'r', encoding='utf-8') as archivo:
+                contenido = archivo.read()
+            documentos.append((nombre_archivo, contenido))
+    return documentos
 
 # =========================
-# Parte 4: Uso del sistema
+# Parte 3: Uso del sistema
 # =========================
 
 def main():
-    # 1. Generar clave secreta para cifrado
+    # 1. Generar clave secreta
     clave = Fernet.generate_key()
 
     # 2. Instanciar gestor y clasificador
     gestor = GestorDocumentos(clave)
     clasificador = ClasificadorDocumentos()
 
-    # 3. Ruta del archivo a importar
-    ruta = "c:\\Users\\Usuario\\Desktop\\python\\cifrado de datos\\documento_ejemplo.txt"  # Cambia el nombre si tu archivo tiene otro nombre
+    # 3. Ruta de la carpeta donde están los documentos
+    ruta_carpeta = "C:\\Users\\Usuario\\Desktop\\python\\cifrado de datos\\documentos"
+  # Carpeta donde debes tener tus .txt
 
-    # 4. Cargar el contenido desde el archivo
-    contenido_importado = cargar_documento_desde_archivo(ruta)
+    # 4. Cargar todos los documentos de la carpeta
+    documentos_importados = cargar_documentos_desde_carpeta(ruta_carpeta)
 
-    # 5. Crear el documento en base al archivo
-    doc_nuevo = Documento(ruta, contenido_importado)
+    if not documentos_importados:
+        print("⚠️ No se encontraron documentos en la carpeta.")
+        return
 
-    # 6. Clasificar el documento
-    tipo_doc = clasificador.predecir_tipo(doc_nuevo.contenido)
-    doc_nuevo.set_tipo(tipo_doc)
+    # 5. Procesar cada documento
+    for nombre, contenido in documentos_importados:
+        doc = Documento(nombre, contenido)
 
-    # 7. Cifrar el contenido del documento
-    gestor.cifrar_documento(doc_nuevo)
+        # Clasificar
+        tipo_doc = clasificador.predecir_tipo(doc.contenido)
+        doc.set_tipo(tipo_doc)
 
-    # 8. Agregar el documento al gestor
-    gestor.agregar_documento(doc_nuevo)
+        # Cifrar
+        gestor.cifrar_documento(doc)
 
-    # 9. Mostrar resultados
-    print(f"\n📄 Documento: {doc_nuevo.nombre}")
-    print(f"🔖 Clasificado como: {doc_nuevo.tipo}")
-    print(f"🔒 Contenido cifrado: {doc_nuevo.contenido}")
+        # Agregar al gestor
+        gestor.agregar_documento(doc)
 
-    # 10. (Opcional) Descifrar y mostrar el contenido original
-    contenido_original = gestor.descifrar_documento(doc_nuevo)
-    print(f"\n🔓 Contenido descifrado:")
-    print(contenido_original)
+        # Mostrar resultados
+        print(f"\n📄 Documento: {doc.nombre}")
+        print(f"🔖 Clasificado como: {doc.tipo}")
+        print(f"🔒 Contenido cifrado: {doc.contenido[:50]}...")  # Mostrar solo un fragmento
+
+    print(f"\n✅ Se procesaron {len(gestor.documentos)} documentos correctamente.")
 
 if __name__ == "__main__":
     main()

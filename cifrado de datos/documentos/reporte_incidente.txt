@@ -1,0 +1,1 @@
+Reporte de incidente técnico registrado el 15 de marzo de 2025, donde se reportó la caída del servidor principal de la empresa, afectando los servicios de correo electrónico.
